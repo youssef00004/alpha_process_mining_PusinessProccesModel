@@ -1,0 +1,159 @@
+======================================================================
+   Alpha Algorithm — van der Aalst (2004)
+   CSE346 Business Process Modeling, Spring 2026
+======================================================================
+
+=== STEP 1: Extract the Set of All Activities (T_L) ===
+  T_L = ['Archive order', 'Check materials availability', 'Check stock availability', 'Confirm order', 'Emit invoice', 'Get shipping address', 'Manufacture product', 'Obtain raw materials', 'Receive payment', 'Request raw materials', 'Retrieve product from warehouse', 'Ship product']
+  Total: 12 distinct activities
+
+=== STEP 2: Extract Start Activities (T_I) ===
+  T_I = ['Check stock availability']
+
+=== STEP 3: Extract End Activities (T_O) ===
+  T_O = ['Archive order']
+
+=== STEP 4: Build the Footprint Matrix ===
+  Relations:
+    A → B  : A directly precedes B (and NOT B directly precedes A)
+    A ← B  : B directly precedes A (and NOT A directly precedes B)
+    A || B : both A→B and B→A occur (parallel / concurrent)
+    A #  B : neither ever directly follows the other
+
+  Extracting directly-follows from 4 cases (36 events) — processed case-by-case.
+  Verified: no cross-case pairs in directly-follows.
+  Found 18 directly-follows pairs.
+
+  Footprint Matrix:
+          A1    A2    A3    A4    A5    A6    A7    A8    A9   A10   A11   A12
+        ------------------------------------------------------------------------
+    A1 |    #     #     #     #     #     #     #     #     ←     #     #     ←
+    A2 |    #     #     ←     #     #     #     →     #     #     →     #     #
+    A3 |    #     →     #     #     #     #     #     #     #     #     →     #
+    A4 |    #     #     #     #     →     →     ←     #     #     #     ←     #
+    A5 |    #     #     #     ←     #    ||     #     #     →     #     #     #
+    A6 |    #     #     #     ←    ||     #     #     #     #     #     #     →
+    A7 |    #     ←     #     →     #     #     #     ←     #     #     #     #
+    A8 |    #     #     #     #     #     #     →     #     #     ←     #     #
+    A9 |    →     #     #     #     ←     #     #     #     #     #     #    ||
+   A10 |    #     ←     #     #     #     #     #     →     #     #     #     #
+   A11 |    #     #     ←     →     #     #     #     #     #     #     #     #
+   A12 |    →     #     #     #     #     ←     #     #    ||     #     #     #
+
+  Activity legend:
+    A1 = Archive order
+    A2 = Check materials availability
+    A3 = Check stock availability
+    A4 = Confirm order
+    A5 = Emit invoice
+    A6 = Get shipping address
+    A7 = Manufacture product
+    A8 = Obtain raw materials
+    A9 = Receive payment
+    A10 = Request raw materials
+    A11 = Retrieve product from warehouse
+    A12 = Ship product
+
+=== STEP 5: Identify Candidate Places ===
+  A place (A_set, B_set) is valid when:
+    (i)  every a∈A_set → every b∈B_set
+    (ii) no two activities within A_set are related (all # within A)
+    (iii)no two activities within B_set are related (all # within B)
+
+  Found 18 candidate places (before pruning):
+    ({'Check materials availability'}, {'Manufacture product'})
+    ({'Check materials availability'}, {'Request raw materials'})
+    ({'Check materials availability'}, {'Request raw materials', 'Manufacture product'})
+    ({'Check stock availability'}, {'Check materials availability'})
+    ({'Check stock availability'}, {'Retrieve product from warehouse'})
+    ({'Check stock availability'}, {'Retrieve product from warehouse', 'Check materials availability'})
+    ({'Confirm order'}, {'Emit invoice'})
+    ({'Confirm order'}, {'Get shipping address'})
+    ({'Emit invoice'}, {'Receive payment'})
+    ({'Get shipping address'}, {'Ship product'})
+    ({'Manufacture product'}, {'Confirm order'})
+    ({'Obtain raw materials'}, {'Manufacture product'})
+    ({'Receive payment'}, {'Archive order'})
+    ({'Request raw materials'}, {'Obtain raw materials'})
+    ({'Retrieve product from warehouse'}, {'Confirm order'})
+    ({'Ship product'}, {'Archive order'})
+    ({'Check materials availability', 'Obtain raw materials'}, {'Manufacture product'})
+    ({'Retrieve product from warehouse', 'Manufacture product'}, {'Confirm order'})
+
+=== STEP 6: Remove Non-Maximal Places ===
+  Keep only maximal pairs — if (A,B) ⊆ (A',B') then discard (A,B).
+
+  [6b] Same output set — merge inputs with no causal relation:
+    Merged 2 places → ({'Ship product', 'Receive payment'}, {'Archive order'})
+
+  [6c] Same input set — merge outputs with no causal relation:
+    Merged 2 places → ({'Confirm order'}, {'Get shipping address', 'Emit invoice'})
+
+  Maximal places (9 remaining):
+    ({'Check materials availability'}, {'Request raw materials', 'Manufacture product'})
+    ({'Check stock availability'}, {'Retrieve product from warehouse', 'Check materials availability'})
+    ({'Confirm order'}, {'Get shipping address', 'Emit invoice'})
+    ({'Emit invoice'}, {'Receive payment'})
+    ({'Get shipping address'}, {'Ship product'})
+    ({'Ship product', 'Receive payment'}, {'Archive order'})
+    ({'Request raw materials'}, {'Obtain raw materials'})
+    ({'Check materials availability', 'Obtain raw materials'}, {'Manufacture product'})
+    ({'Retrieve product from warehouse', 'Manufacture product'}, {'Confirm order'})
+
+=== STEP 7: Construct the Petri Net ===
+
+  Places (as input_set → output_set):
+    p1: {'Check materials availability'} → {'Request raw materials', 'Manufacture product'}
+    p2: {'Check stock availability'} → {'Retrieve product from warehouse', 'Check materials availability'}
+    p3: {'Confirm order'} → {'Get shipping address', 'Emit invoice'}
+    p4: {'Emit invoice'} → {'Receive payment'}
+    p5: {'Get shipping address'} → {'Ship product'}
+    p6: {'Ship product', 'Receive payment'} → {'Archive order'}
+    p7: {'Request raw materials'} → {'Obtain raw materials'}
+    p8: {'Check materials availability', 'Obtain raw materials'} → {'Manufacture product'}
+    p9: {'Retrieve product from warehouse', 'Manufacture product'} → {'Confirm order'}
+    p_start (source): [] → ['Check stock availability']
+    p_end   (sink)  : ['Archive order'] → []
+
+=== STEP 8: Full Alpha Algorithm Result ===
+
+  Activities   : ['Archive order', 'Check materials availability', 'Check stock availability', 'Confirm order', 'Emit invoice', 'Get shipping address', 'Manufacture product', 'Obtain raw materials', 'Receive payment', 'Request raw materials', 'Retrieve product from warehouse', 'Ship product']
+  Start (T_I)  : ['Check stock availability']
+  End   (T_O)  : ['Archive order']
+
+  Discovered places:
+    p1: inputs={'Check materials availability'}  outputs={'Request raw materials', 'Manufacture product'}
+    p2: inputs={'Check stock availability'}  outputs={'Retrieve product from warehouse', 'Check materials availability'}
+    p3: inputs={'Confirm order'}  outputs={'Get shipping address', 'Emit invoice'}
+    p4: inputs={'Emit invoice'}  outputs={'Receive payment'}
+    p5: inputs={'Get shipping address'}  outputs={'Ship product'}
+    p6: inputs={'Ship product', 'Receive payment'}  outputs={'Archive order'}
+    p7: inputs={'Request raw materials'}  outputs={'Obtain raw materials'}
+    p8: inputs={'Check materials availability', 'Obtain raw materials'}  outputs={'Manufacture product'}
+    p9: inputs={'Retrieve product from warehouse', 'Manufacture product'}  outputs={'Confirm order'}
+    p_start: source place  → ['Check stock availability']
+    p_end  : ['Archive order'] → sink place
+
+  Directly-follows pairs (A → B in log):
+    Check materials availability → Manufacture product
+    Check materials availability → Request raw materials
+    Check stock availability → Check materials availability
+    Check stock availability → Retrieve product from warehouse
+    Confirm order → Emit invoice
+    Confirm order → Get shipping address
+    Emit invoice → Get shipping address
+    Emit invoice → Receive payment
+    Get shipping address → Emit invoice
+    Get shipping address → Ship product
+    Manufacture product → Confirm order
+    Obtain raw materials → Manufacture product
+    Receive payment → Archive order
+    Receive payment → Ship product
+    Request raw materials → Obtain raw materials
+    Retrieve product from warehouse → Confirm order
+    Ship product → Archive order
+    Ship product → Receive payment
+
+======================================================================
+  Alpha Algorithm complete.
+======================================================================

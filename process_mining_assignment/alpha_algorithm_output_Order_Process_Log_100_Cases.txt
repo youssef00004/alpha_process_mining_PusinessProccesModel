@@ -1,0 +1,116 @@
+======================================================================
+   Alpha Algorithm — van der Aalst (2004)
+   CSE346 Business Process Modeling, Spring 2026
+======================================================================
+
+=== STEP 1: Extract the Set of All Activities (T_L) ===
+  T_L = ['Approve order', 'Cancel order', 'Check inventory', 'Manual review', 'Pack order', 'Receive order', 'Ship order']
+  Total: 7 distinct activities
+
+=== STEP 2: Extract Start Activities (T_I) ===
+  T_I = ['Receive order']
+
+=== STEP 3: Extract End Activities (T_O) ===
+  T_O = ['Cancel order', 'Ship order']
+
+=== STEP 4: Build the Footprint Matrix ===
+  Relations:
+    A → B  : A directly precedes B (and NOT B directly precedes A)
+    A ← B  : B directly precedes A (and NOT A directly precedes B)
+    A || B : both A→B and B→A occur (parallel / concurrent)
+    A #  B : neither ever directly follows the other
+
+  Extracting directly-follows from 100 cases (503 events) — processed case-by-case.
+  Verified: no cross-case pairs in directly-follows.
+  Found 9 directly-follows pairs.
+
+  Footprint Matrix:
+          A1    A2    A3    A4    A5    A6    A7
+        ------------------------------------------
+    A1 |    #     #     ←     ←     →     #     #
+    A2 |    #     #     #     #     #     ←     #
+    A3 |    →     #     #    ||     #     ←     #
+    A4 |    →     #    ||     #     #     ←     #
+    A5 |    ←     #     #     #     #     #     →
+    A6 |    #     →     →     →     #     #     #
+    A7 |    #     #     #     #     ←     #     #
+
+  Activity legend:
+    A1 = Approve order
+    A2 = Cancel order
+    A3 = Check inventory
+    A4 = Manual review
+    A5 = Pack order
+    A6 = Receive order
+    A7 = Ship order
+
+=== STEP 5: Identify Candidate Places ===
+  A place (A_set, B_set) is valid when:
+    (i)  every a∈A_set → every b∈B_set
+    (ii) no two activities within A_set are related (all # within A)
+    (iii)no two activities within B_set are related (all # within B)
+
+  Found 9 candidate places (before pruning):
+    ({'Approve order'}, {'Pack order'})
+    ({'Check inventory'}, {'Approve order'})
+    ({'Manual review'}, {'Approve order'})
+    ({'Pack order'}, {'Ship order'})
+    ({'Receive order'}, {'Cancel order'})
+    ({'Receive order'}, {'Check inventory'})
+    ({'Receive order'}, {'Manual review'})
+    ({'Receive order'}, {'Check inventory', 'Cancel order'})
+    ({'Receive order'}, {'Manual review', 'Cancel order'})
+
+=== STEP 6: Remove Non-Maximal Places ===
+  Keep only maximal pairs — if (A,B) ⊆ (A',B') then discard (A,B).
+
+  [6b] Same output set — merge inputs with no causal relation:
+    Merged 2 places → ({'Check inventory', 'Manual review'}, {'Approve order'})
+
+  [6c] Same input set — merge outputs with no causal relation:
+    Merged 2 places → ({'Receive order'}, {'Manual review', 'Check inventory', 'Cancel order'})
+
+  Maximal places (4 remaining):
+    ({'Approve order'}, {'Pack order'})
+    ({'Check inventory', 'Manual review'}, {'Approve order'})
+    ({'Pack order'}, {'Ship order'})
+    ({'Receive order'}, {'Manual review', 'Check inventory', 'Cancel order'})
+
+=== STEP 7: Construct the Petri Net ===
+
+  Places (as input_set → output_set):
+    p1: {'Approve order'} → {'Pack order'}
+    p2: {'Check inventory', 'Manual review'} → {'Approve order'}
+    p3: {'Pack order'} → {'Ship order'}
+    p4: {'Receive order'} → {'Manual review', 'Check inventory', 'Cancel order'}
+    p_start (source): [] → ['Receive order']
+    p_end   (sink)  : ['Cancel order', 'Ship order'] → []
+
+=== STEP 8: Full Alpha Algorithm Result ===
+
+  Activities   : ['Approve order', 'Cancel order', 'Check inventory', 'Manual review', 'Pack order', 'Receive order', 'Ship order']
+  Start (T_I)  : ['Receive order']
+  End   (T_O)  : ['Cancel order', 'Ship order']
+
+  Discovered places:
+    p1: inputs={'Approve order'}  outputs={'Pack order'}
+    p2: inputs={'Check inventory', 'Manual review'}  outputs={'Approve order'}
+    p3: inputs={'Pack order'}  outputs={'Ship order'}
+    p4: inputs={'Receive order'}  outputs={'Manual review', 'Check inventory', 'Cancel order'}
+    p_start: source place  → ['Receive order']
+    p_end  : ['Cancel order', 'Ship order'] → sink place
+
+  Directly-follows pairs (A → B in log):
+    Approve order → Pack order
+    Check inventory → Approve order
+    Check inventory → Manual review
+    Manual review → Approve order
+    Manual review → Check inventory
+    Pack order → Ship order
+    Receive order → Cancel order
+    Receive order → Check inventory
+    Receive order → Manual review
+
+======================================================================
+  Alpha Algorithm complete.
+======================================================================
