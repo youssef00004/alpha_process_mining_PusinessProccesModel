@@ -221,28 +221,22 @@ conditions yielded 18 candidate places before the maximality pruning step.
 
 A place (A, B) is non-maximal if there exists another place (A', B') such that A ⊆ A'
 and B ⊆ B'. Non-maximal places are redundant because the larger place already captures
-all the causal information of the smaller one. Two additional consolidation passes are
-applied:
+all the causal information of the smaller one. After non-maximal pairs are removed, the
+remaining maximal pairs form the Alpha Algorithm places.
 
-  Pass 6b — Same output set, independent inputs: if two places share the same B_set
-  and their A_sets have no causal relation between them, the two places are merged into
-  one place with the union of their A_sets.
-
-  Pass 6c — Same input set, independent outputs: if two places share the same A_set
-  and their B_sets have no causal relation between them, the two places are merged into
-  one place with the union of their B_sets.
-
-After pruning, 9 maximal places remain:
+After pruning, 11 maximal places remain:
 
   p1:  { Check materials availability }                            →  { Manufacture product, Request raw materials }
   p2:  { Check stock availability }                                →  { Check materials availability, Retrieve product from warehouse }
-  p3:  { Confirm order }                                           →  { Emit invoice, Get shipping address }
-  p4:  { Emit invoice }                                            →  { Receive payment }
-  p5:  { Get shipping address }                                    →  { Ship product }
-  p6:  { Receive payment, Ship product }                           →  { Archive order }
-  p7:  { Request raw materials }                                   →  { Obtain raw materials }
-  p8:  { Check materials availability, Obtain raw materials }      →  { Manufacture product }
-  p9:  { Manufacture product, Retrieve product from warehouse }    →  { Confirm order }
+  p3:  { Confirm order }                                           →  { Emit invoice }
+  p4:  { Confirm order }                                           →  { Get shipping address }
+  p5:  { Emit invoice }                                            →  { Receive payment }
+  p6:  { Get shipping address }                                    →  { Ship product }
+  p7:  { Receive payment }                                         →  { Archive order }
+  p8:  { Request raw materials }                                   →  { Obtain raw materials }
+  p9:  { Ship product }                                            →  { Archive order }
+  p10: { Check materials availability, Obtain raw materials }      →  { Manufacture product }
+  p11: { Manufacture product, Retrieve product from warehouse }    →  { Confirm order }
 
 --- Step 7: Construct the Petri net ---
 
@@ -250,7 +244,7 @@ Two special places are added to complete the Petri net:
   p_start  (source place): enables Check stock availability at the beginning of every case.
   p_end    (sink place):   receives a token when Archive order completes.
 
-The complete Petri net consists of the 9 discovered places plus p_start and p_end,
+The complete Petri net consists of the 11 discovered places plus p_start and p_end,
 with arcs connecting each activity to its input and output places as defined by the
 (A_set, B_set) pairs.
 
@@ -259,7 +253,7 @@ with arcs connecting each activity to its input and output places as defined by 
   Activities (T_L):  12 distinct activities
   Start (T_I):       Check stock availability
   End (T_O):         Archive order
-  Discovered places: 9 (plus p_start and p_end)
+  Discovered places: 11 (plus p_start and p_end)
   Directly-follows:  18 pairs extracted from 4 cases (36 events)
 
 The full step-by-step trace is saved to alpha_algorithm_output_Input.txt.
@@ -297,7 +291,7 @@ Four distinct execution paths are present in the log:
     longest path and involves the most resources.
 
 After Confirm order, all paths merge and the process continues identically for every
-case. Place p3 enables two concurrent sub-processes:
+case. Places p3 and p4 (both enabled by Confirm order) enable two concurrent sub-processes:
 
   Concurrent pair 1 — Invoice and payment:
     Confirm order → Emit invoice → Receive payment
@@ -316,10 +310,10 @@ the invoice is issued first. In Cases 1 and 4 payment is collected before shippi
 Cases 2 and 3 the product is shipped before payment is collected. Neither ordering is a
 prerequisite for the other, which the footprint matrix correctly encodes as ||.
 
-Place p6 acts as an AND-join: Archive order can only fire when both Receive payment and
-Ship product have completed, regardless of which finished first. This correctly models
-the business constraint that an order cannot be closed until both the financial and
-physical fulfilment obligations are met.
+Places p7 and p9 act together as an AND-join: Archive order can only fire when both
+Receive payment (p7) and Ship product (p9) have completed, regardless of which finished
+first. This correctly models the business constraint that an order cannot be closed until
+both the financial and physical fulfilment obligations are met.
 
 No loops were detected. No activity appears as both a direct predecessor and a direct
 successor of another activity in a cyclic way. The discovered Petri net is acyclic,
@@ -341,7 +335,7 @@ the activity name and drawn in a colour that reflects its structural role in the
 The chart is derived entirely from the Alpha Algorithm output stored in the alpha_result
 dictionary. No activity names, node positions, node counts, or arc colours are
 hardcoded. The build_pert_graph_from_alpha() function in pert_chart.py translates the
-9 discovered Petri net places into graph nodes and arcs through the following logic:
+11 discovered Petri net places into graph nodes and arcs through the following logic:
 
   - Each alpha place (A_set, B_set) becomes an intermediate event node.
   - p_start becomes the single green start node (labelled "0 — Start").
@@ -355,14 +349,21 @@ each activity label appears exactly once on the chart:
   Fan-out (one source place, one activity, multiple destination places):
     A grey split-event node is inserted. One labelled arc goes from the source to the
     split node; unlabelled dummy arcs (dashed, grey) go from the split node to each
-    destination. This occurs for Check materials availability, which fans out to both
-    p7 (Request raw materials path) and p8 (direct manufacture path).
+    destination. This occurs for two activities:
+      - Check materials availability, which fans out to both p1 (routing to Manufacture
+        product and Request raw materials) and p10 (combining with Obtain raw materials).
+      - Confirm order, which fans out to p3 (enabling Emit invoice) and p4 (enabling
+        Get shipping address) — the two concurrent post-confirmation sub-processes.
 
   Fan-in (multiple source places, one activity, one destination place):
     A grey merge-event node is inserted. Unlabelled dummy arcs arrive at the merge node
     from each source; one labelled arc departs from the merge node to the destination.
-    This occurs for Manufacture product, which can be enabled either via p8 alone (direct
-    manufacturing) or via the procurement path through p8 with Obtain raw materials.
+    This occurs for two activities:
+      - Manufacture product, which can be enabled either via p1 (direct manufacturing
+        from Check materials availability) or via p10 (procurement path through Obtain
+        raw materials).
+      - Archive order, which requires both p7 (Receive payment completed) and p9 (Ship
+        product completed) — enforcing the AND-join before the process ends.
 
 Dummy arcs represent zero-duration dependency constraints. They carry no activity label
 and are drawn as dashed grey lines to distinguish them visually from real activity arcs.
@@ -372,9 +373,8 @@ duplicating activity labels.
 Parallel paths are shown by arcs departing from the same node at different vertical
 positions and converging again at a later node. The two concurrent pairs — Emit invoice
 with Get shipping address, and Receive payment with Ship product — appear as two
-separate arcs leaving the Confirm order event node (p3) and two separate arcs arriving
-at the Archive order event node (p6 / p_end), making the concurrency immediately
-visible in the diagram.
+separate arcs leaving the Confirm order split node and two separate arcs arriving at
+the Archive order merge node, making the concurrency immediately visible in the diagram.
 
 Node numbering is assigned by topological order of the graph. Every node receives a
 unique integer label that increases monotonically from start (0) to end. This numbering
@@ -428,7 +428,7 @@ From Python:
 The only requirement is that the Excel file contains columns named Case ID, Activity,
 Timestamp, and Resource. Event ID is optional and will be auto-generated. Column names
 are matched case-insensitively. The pipeline has been tested on the provided 4-case log
-(Input.xlsx / sample_input.xlsx) and the 100-case log
+(Input.xlsx) and the 100-case log
 (Order_Process_Log_100_Cases.xlsx), both of which produce valid output with different
 discovered process structures, confirming that the pipeline is genuinely generic.
 
@@ -457,7 +457,7 @@ is the formal basis for Steps 5 and 6 of the Alpha Algorithm.
 Sheet 3 — Alpha Results:
 Contains a two-column summary of the Alpha Algorithm output. The first column is a type
 label and the second column is the corresponding value. The sheet lists the start
-activities (T_I), end activities (T_O), all activities (T_L), and each of the 9
+activities (T_I), end activities (T_O), all activities (T_L), and each of the 11
 discovered places in the form "Input: {A_set} → Output: {B_set}", followed by the
 source and sink places (p_start and p_end).
 
@@ -504,10 +504,11 @@ The 100-case log (Order_Process_Log_100_Cases.xlsx) contains 100 cases, 503 even
 7 distinct activities, and 7 resources. Running the full pipeline on this log produces
 a structurally different result from the 4-case log:
 
-  4-case log:   12 activities, 9 maximal places, 2 end activities, 1 split node,
-                1 merge node, 2 concurrent pairs
-  100-case log: 7 activities, 4 maximal places, 2 end activities (Cancel order and
-                Ship order), 0 split nodes, 0 merge nodes, 0 concurrent pairs
+  4-case log:   12 activities, 11 maximal places, 1 end activity, 2 split nodes,
+                2 merge nodes, 2 concurrent pairs
+  100-case log: 7 activities, 6 maximal places, 2 end activities (Cancel order and
+                Ship order), 1 split node, 1 merge node, 1 concurrent pair
+                (Check inventory || Manual review)
 
 The PERT charts for the two logs are visually distinct, confirming that the chart
 generation is driven entirely by the algorithm output and not by hardcoded structure.

@@ -147,6 +147,7 @@ def footprint_to_df(activities, footprint) -> pd.DataFrame:
     return pd.DataFrame(rows).set_index("Activity")
 
 
+
 # ── 6. Alpha results summary DataFrame ───────────────────────────────────────
 
 def alpha_results_to_df(result: dict) -> pd.DataFrame:

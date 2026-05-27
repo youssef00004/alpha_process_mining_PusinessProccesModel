@@ -58,31 +58,29 @@
     ({'Receive order'}, {'Cancel order'})
     ({'Receive order'}, {'Check inventory'})
     ({'Receive order'}, {'Manual review'})
-    ({'Receive order'}, {'Check inventory', 'Cancel order'})
-    ({'Receive order'}, {'Manual review', 'Cancel order'})
+    ({'Receive order'}, {'Cancel order', 'Check inventory'})
+    ({'Receive order'}, {'Cancel order', 'Manual review'})
 
 === STEP 6: Remove Non-Maximal Places ===
   Keep only maximal pairs — if (A,B) ⊆ (A',B') then discard (A,B).
 
-  [6b] Same output set — merge inputs with no causal relation:
-    Merged 2 places → ({'Check inventory', 'Manual review'}, {'Approve order'})
-
-  [6c] Same input set — merge outputs with no causal relation:
-    Merged 2 places → ({'Receive order'}, {'Manual review', 'Check inventory', 'Cancel order'})
-
-  Maximal places (4 remaining):
+  Maximal places (6 remaining):
     ({'Approve order'}, {'Pack order'})
-    ({'Check inventory', 'Manual review'}, {'Approve order'})
+    ({'Check inventory'}, {'Approve order'})
+    ({'Manual review'}, {'Approve order'})
     ({'Pack order'}, {'Ship order'})
-    ({'Receive order'}, {'Manual review', 'Check inventory', 'Cancel order'})
+    ({'Receive order'}, {'Cancel order', 'Check inventory'})
+    ({'Receive order'}, {'Cancel order', 'Manual review'})
 
 === STEP 7: Construct the Petri Net ===
 
   Places (as input_set → output_set):
     p1: {'Approve order'} → {'Pack order'}
-    p2: {'Check inventory', 'Manual review'} → {'Approve order'}
-    p3: {'Pack order'} → {'Ship order'}
-    p4: {'Receive order'} → {'Manual review', 'Check inventory', 'Cancel order'}
+    p2: {'Check inventory'} → {'Approve order'}
+    p3: {'Manual review'} → {'Approve order'}
+    p4: {'Pack order'} → {'Ship order'}
+    p5: {'Receive order'} → {'Cancel order', 'Check inventory'}
+    p6: {'Receive order'} → {'Cancel order', 'Manual review'}
     p_start (source): [] → ['Receive order']
     p_end   (sink)  : ['Cancel order', 'Ship order'] → []
 
@@ -94,9 +92,11 @@
 
   Discovered places:
     p1: inputs={'Approve order'}  outputs={'Pack order'}
-    p2: inputs={'Check inventory', 'Manual review'}  outputs={'Approve order'}
-    p3: inputs={'Pack order'}  outputs={'Ship order'}
-    p4: inputs={'Receive order'}  outputs={'Manual review', 'Check inventory', 'Cancel order'}
+    p2: inputs={'Check inventory'}  outputs={'Approve order'}
+    p3: inputs={'Manual review'}  outputs={'Approve order'}
+    p4: inputs={'Pack order'}  outputs={'Ship order'}
+    p5: inputs={'Receive order'}  outputs={'Cancel order', 'Check inventory'}
+    p6: inputs={'Receive order'}  outputs={'Cancel order', 'Manual review'}
     p_start: source place  → ['Receive order']
     p_end  : ['Cancel order', 'Ship order'] → sink place
 

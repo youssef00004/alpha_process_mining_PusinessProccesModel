@@ -66,7 +66,7 @@
     ({'Check materials availability'}, {'Manufacture product', 'Request raw materials'})
     ({'Check stock availability'}, {'Check materials availability'})
     ({'Check stock availability'}, {'Retrieve product from warehouse'})
-    ({'Check stock availability'}, {'Retrieve product from warehouse', 'Check materials availability'})
+    ({'Check stock availability'}, {'Check materials availability', 'Retrieve product from warehouse'})
     ({'Confirm order'}, {'Emit invoice'})
     ({'Confirm order'}, {'Get shipping address'})
     ({'Emit invoice'}, {'Receive payment'})
@@ -85,7 +85,7 @@
 
   Maximal places (11 remaining):
     ({'Check materials availability'}, {'Manufacture product', 'Request raw materials'})
-    ({'Check stock availability'}, {'Retrieve product from warehouse', 'Check materials availability'})
+    ({'Check stock availability'}, {'Check materials availability', 'Retrieve product from warehouse'})
     ({'Confirm order'}, {'Emit invoice'})
     ({'Confirm order'}, {'Get shipping address'})
     ({'Emit invoice'}, {'Receive payment'})
@@ -100,7 +100,7 @@
 
   Places (as input_set → output_set):
     p1: {'Check materials availability'} → {'Manufacture product', 'Request raw materials'}
-    p2: {'Check stock availability'} → {'Retrieve product from warehouse', 'Check materials availability'}
+    p2: {'Check stock availability'} → {'Check materials availability', 'Retrieve product from warehouse'}
     p3: {'Confirm order'} → {'Emit invoice'}
     p4: {'Confirm order'} → {'Get shipping address'}
     p5: {'Emit invoice'} → {'Receive payment'}
@@ -121,7 +121,7 @@
 
   Discovered places:
     p1: inputs={'Check materials availability'}  outputs={'Manufacture product', 'Request raw materials'}
-    p2: inputs={'Check stock availability'}  outputs={'Retrieve product from warehouse', 'Check materials availability'}
+    p2: inputs={'Check stock availability'}  outputs={'Check materials availability', 'Retrieve product from warehouse'}
     p3: inputs={'Confirm order'}  outputs={'Emit invoice'}
     p4: inputs={'Confirm order'}  outputs={'Get shipping address'}
     p5: inputs={'Emit invoice'}  outputs={'Receive payment'}

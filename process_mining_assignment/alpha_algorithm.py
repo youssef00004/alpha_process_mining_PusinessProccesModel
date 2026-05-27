@@ -9,7 +9,6 @@ IEEE Transactions on Knowledge and Data Engineering, 16(9), 1128–1142.
 
 import sys
 from itertools import combinations
-from collections import defaultdict
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -187,59 +186,6 @@ def run_alpha_algorithm(traces, output_file=None):
         return True
 
     maximal_places = [p for p in candidate_places if is_maximal(p, candidate_places)]
-
-    # ── STEP 6b: Merge places that share the same output set ──────────────────
-    # (A1,B) and (A2,B) → (A1∪A2, B) when inputs have no causal (→/←) relation.
-    emit("\n  [6b] Same output set — merge inputs with no causal relation:")
-
-    def _no_causal(pairs, fp):
-        lst = list(pairs)
-        for i in range(len(lst)):
-            for j in range(i + 1, len(lst)):
-                if fp[lst[i]][lst[j]] in ("→", "←"):
-                    return False
-        return True
-
-    by_b: dict = defaultdict(list)
-    for p in maximal_places:
-        by_b[p[1]].append(p)
-
-    merged_places = []
-    for b_set, group in by_b.items():
-        if len(group) == 1:
-            merged_places.append(group[0])
-            continue
-        combined_a = frozenset().union(*[p[0] for p in group])
-        if _no_causal(combined_a, footprint):
-            merged_places.append((combined_a, b_set))
-            emit(f"    Merged {len(group)} places → ({set(combined_a)}, {set(b_set)})")
-        else:
-            merged_places.extend(group)
-
-    maximal_places = merged_places
-
-    # ── STEP 6c: Merge places that share the same input set ───────────────────
-    # (A,B1) and (A,B2) → (A, B1∪B2) when outputs have no causal (→/←) relation.
-    # Concurrent (||) outputs are allowed — they share the same enabling condition.
-    emit("\n  [6c] Same input set — merge outputs with no causal relation:")
-
-    by_a: dict = defaultdict(list)
-    for p in maximal_places:
-        by_a[p[0]].append(p)
-
-    merged_places = []
-    for a_set, group in by_a.items():
-        if len(group) == 1:
-            merged_places.append(group[0])
-            continue
-        combined_b = frozenset().union(*[p[1] for p in group])
-        if _no_causal(combined_b, footprint):
-            merged_places.append((a_set, combined_b))
-            emit(f"    Merged {len(group)} places → ({set(a_set)}, {set(combined_b)})")
-        else:
-            merged_places.extend(group)
-
-    maximal_places = merged_places
 
     emit(f"\n  Maximal places ({len(maximal_places)} remaining):")
     for p in maximal_places:
