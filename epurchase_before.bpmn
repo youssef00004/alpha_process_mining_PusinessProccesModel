@@ -1,0 +1,473 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:activiti="http://activiti.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+             targetNamespace="http://www.example.org/epurchase-before"
+             xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL http://www.omg.org/spec/BPMN/2.0/20100501/BPMN20.xsd">
+
+  <collaboration id="collab_before">
+    <participant id="pool_shopEasy" name="ShopEasy – E-Purchase Process (BEFORE Enhancement)" processRef="proc_before" />
+  </collaboration>
+
+  <process id="proc_before" name="E-Purchase Before" isExecutable="false">
+
+    <!-- LANES -->
+    <laneSet id="laneSet1">
+      <lane id="lane_customer" name="Customer">
+        <flowNodeRef>start_visit</flowNodeRef>
+        <flowNodeRef>task_browse</flowNodeRef>
+        <flowNodeRef>task_addcart</flowNodeRef>
+        <flowNodeRef>task_reviewcart</flowNodeRef>
+        <flowNodeRef>task_address</flowNodeRef>
+        <flowNodeRef>task_paymethod</flowNodeRef>
+        <flowNodeRef>task_complaint</flowNodeRef>
+        <flowNodeRef>task_review</flowNodeRef>
+        <flowNodeRef>end_complete</flowNodeRef>
+      </lane>
+      <lane id="lane_ordermgmt" name="Order Management System">
+        <flowNodeRef>task_validatestock</flowNodeRef>
+        <flowNodeRef>gw_stock</flowNodeRef>
+        <flowNodeRef>task_nostock_notify</flowNodeRef>
+        <flowNodeRef>task_invoice</flowNodeRef>
+        <flowNodeRef>end_nostock</flowNodeRef>
+      </lane>
+      <lane id="lane_payment" name="Payment Gateway">
+        <flowNodeRef>task_processpay</flowNodeRef>
+        <flowNodeRef>gw_payment</flowNodeRef>
+        <flowNodeRef>task_payfail_notify</flowNodeRef>
+        <flowNodeRef>task_payconfirm</flowNodeRef>
+        <flowNodeRef>end_payfail</flowNodeRef>
+      </lane>
+      <lane id="lane_warehouse" name="Warehouse and Fulfillment">
+        <flowNodeRef>task_pickpack</flowNodeRef>
+        <flowNodeRef>task_assigncarrier</flowNodeRef>
+        <flowNodeRef>task_dispatch</flowNodeRef>
+      </lane>
+      <lane id="lane_shipping" name="Shipping Partner">
+        <flowNodeRef>task_pickup</flowNodeRef>
+        <flowNodeRef>task_intransit</flowNodeRef>
+        <flowNodeRef>timer_deadline</flowNodeRef>
+        <flowNodeRef>gw_delivered</flowNodeRef>
+        <flowNodeRef>msg_delayalert</flowNodeRef>
+        <flowNodeRef>task_delay_notify</flowNodeRef>
+        <flowNodeRef>gw_customer_decision</flowNodeRef>
+        <flowNodeRef>task_refund</flowNodeRef>
+        <flowNodeRef>task_reschedule</flowNodeRef>
+        <flowNodeRef>task_deliveryconfirm</flowNodeRef>
+        <flowNodeRef>end_cancelled_delay</flowNodeRef>
+      </lane>
+    </laneSet>
+
+    <!-- ======= LANE: CUSTOMER ======= -->
+    <startEvent id="start_visit" name="Customer Visits Platform">
+      <outgoing>sf1</outgoing>
+    </startEvent>
+
+    <userTask id="task_browse" name="Browse and Search Products">
+      <incoming>sf1</incoming>
+      <outgoing>sf2</outgoing>
+    </userTask>
+
+    <userTask id="task_addcart" name="Add Item to Cart">
+      <incoming>sf2</incoming>
+      <outgoing>sf3</outgoing>
+    </userTask>
+
+    <userTask id="task_reviewcart" name="Review Cart and Proceed to Checkout">
+      <incoming>sf3</incoming>
+      <outgoing>sf4</outgoing>
+    </userTask>
+
+    <userTask id="task_address" name="Enter Shipping Address">
+      <incoming>sf4</incoming>
+      <outgoing>sf5</outgoing>
+    </userTask>
+
+    <userTask id="task_paymethod" name="Select Payment Method">
+      <incoming>sf5</incoming>
+      <outgoing>mf_pay_to_gateway</outgoing>
+    </userTask>
+
+    <userTask id="task_complaint" name="Customer Files Complaint: Wait or Cancel">
+      <incoming>mf_delay_to_complaint</incoming>
+      <outgoing>mf_complaint_to_decision</outgoing>
+    </userTask>
+
+    <userTask id="task_review" name="Customer Reviews and Rates Order">
+      <incoming>mf_confirm_to_review</incoming>
+      <outgoing>sf_review_end</outgoing>
+    </userTask>
+
+    <endEvent id="end_complete" name="Order Complete">
+      <incoming>sf_review_end</incoming>
+    </endEvent>
+
+    <!-- ======= LANE: ORDER MANAGEMENT ======= -->
+    <serviceTask id="task_validatestock" name="Validate Order and Check Stock">
+      <incoming>mf_address_to_ordermgmt</incoming>
+      <outgoing>sf6</outgoing>
+    </serviceTask>
+
+    <exclusiveGateway id="gw_stock" name="Stock Available?">
+      <incoming>sf6</incoming>
+      <outgoing>sf_stock_yes</outgoing>
+      <outgoing>sf_stock_no</outgoing>
+    </exclusiveGateway>
+
+    <sendTask id="task_nostock_notify" name="Notify Customer – Out of Stock">
+      <incoming>sf_stock_no</incoming>
+      <outgoing>sf_nostock_end</outgoing>
+    </sendTask>
+
+    <endEvent id="end_nostock" name="Order Cancelled – No Stock">
+      <incoming>sf_nostock_end</incoming>
+      <terminateEventDefinition/>
+    </endEvent>
+
+    <serviceTask id="task_invoice" name="Generate Order ID and Invoice">
+      <incoming>sf_stock_yes</incoming>
+      <outgoing>mf_invoice_to_payment</outgoing>
+    </serviceTask>
+
+    <!-- ======= LANE: PAYMENT ======= -->
+    <serviceTask id="task_processpay" name="Process Payment Authorization">
+      <incoming>mf_pay_to_gateway</incoming>
+      <incoming>mf_invoice_to_payment</incoming>
+      <outgoing>sf7</outgoing>
+    </serviceTask>
+
+    <exclusiveGateway id="gw_payment" name="Payment Successful?">
+      <incoming>sf7</incoming>
+      <outgoing>sf_pay_yes</outgoing>
+      <outgoing>sf_pay_no</outgoing>
+    </exclusiveGateway>
+
+    <sendTask id="task_payfail_notify" name="Notify Customer – Payment Failed">
+      <incoming>sf_pay_no</incoming>
+      <outgoing>sf_payfail_end</outgoing>
+    </sendTask>
+
+    <endEvent id="end_payfail" name="Order Failed – Payment">
+      <incoming>sf_payfail_end</incoming>
+      <terminateEventDefinition/>
+    </endEvent>
+
+    <sendTask id="task_payconfirm" name="Send Payment Confirmation to Customer">
+      <incoming>sf_pay_yes</incoming>
+      <outgoing>mf_payment_to_warehouse</outgoing>
+    </sendTask>
+
+    <!-- ======= LANE: WAREHOUSE ======= -->
+    <serviceTask id="task_pickpack" name="Pick and Pack Items">
+      <incoming>mf_payment_to_warehouse</incoming>
+      <outgoing>sf8</outgoing>
+    </serviceTask>
+
+    <serviceTask id="task_assigncarrier" name="Assign Shipping Carrier">
+      <incoming>sf8</incoming>
+      <outgoing>sf9</outgoing>
+    </serviceTask>
+
+    <sendTask id="task_dispatch" name="Dispatch Order to Shipping Partner">
+      <incoming>sf9</incoming>
+      <outgoing>mf_dispatch_to_shipping</outgoing>
+    </sendTask>
+
+    <!-- ======= LANE: SHIPPING ======= -->
+    <serviceTask id="task_pickup" name="Pick Up Package from Warehouse">
+      <incoming>mf_dispatch_to_shipping</incoming>
+      <outgoing>sf10</outgoing>
+    </serviceTask>
+
+    <serviceTask id="task_intransit" name="In Transit – Update Tracking">
+      <incoming>sf10</incoming>
+      <outgoing>sf11</outgoing>
+    </serviceTask>
+
+    <intermediateCatchEvent id="timer_deadline" name="Expected Delivery Deadline (3 Days)">
+      <incoming>sf11</incoming>
+      <outgoing>sf12</outgoing>
+      <timerEventDefinition>
+        <timeDuration>P3D</timeDuration>
+      </timerEventDefinition>
+    </intermediateCatchEvent>
+
+    <exclusiveGateway id="gw_delivered" name="Delivered on Time?">
+      <incoming>sf12</incoming>
+      <outgoing>sf_delivered_yes</outgoing>
+      <outgoing>sf_delivered_no</outgoing>
+    </exclusiveGateway>
+
+    <intermediateCatchEvent id="msg_delayalert" name="Delay Alert Triggered">
+      <incoming>sf_delivered_no</incoming>
+      <outgoing>sf13</outgoing>
+      <messageEventDefinition/>
+    </intermediateCatchEvent>
+
+    <sendTask id="task_delay_notify" name="Notify Customer of Delay">
+      <incoming>sf13</incoming>
+      <outgoing>mf_delay_to_complaint</outgoing>
+    </sendTask>
+
+    <exclusiveGateway id="gw_customer_decision" name="Customer Decision?">
+      <incoming>mf_complaint_to_decision</incoming>
+      <outgoing>sf_decision_cancel</outgoing>
+      <outgoing>sf_decision_wait</outgoing>
+    </exclusiveGateway>
+
+    <serviceTask id="task_refund" name="Process Refund">
+      <incoming>sf_decision_cancel</incoming>
+      <outgoing>sf_refund_end</outgoing>
+    </serviceTask>
+
+    <endEvent id="end_cancelled_delay" name="Order Cancelled – Delay">
+      <incoming>sf_refund_end</incoming>
+      <terminateEventDefinition/>
+    </endEvent>
+
+    <serviceTask id="task_reschedule" name="Reschedule Delivery">
+      <incoming>sf_decision_wait</incoming>
+      <outgoing>sf14</outgoing>
+    </serviceTask>
+
+    <sendTask id="task_deliveryconfirm" name="Send Delivery Confirmation and Receipt">
+      <incoming>sf_delivered_yes</incoming>
+      <incoming>sf14</incoming>
+      <outgoing>mf_confirm_to_review</outgoing>
+    </sendTask>
+
+    <!-- ======= SEQUENCE FLOWS ======= -->
+    <sequenceFlow id="sf1" sourceRef="start_visit" targetRef="task_browse"/>
+    <sequenceFlow id="sf2" sourceRef="task_browse" targetRef="task_addcart"/>
+    <sequenceFlow id="sf3" sourceRef="task_addcart" targetRef="task_reviewcart"/>
+    <sequenceFlow id="sf4" sourceRef="task_reviewcart" targetRef="task_address"/>
+    <sequenceFlow id="sf5" sourceRef="task_address" targetRef="task_paymethod"/>
+    <sequenceFlow id="sf_review_end" sourceRef="task_review" targetRef="end_complete"/>
+
+    <sequenceFlow id="mf_address_to_ordermgmt" sourceRef="task_address" targetRef="task_validatestock"/>
+    <sequenceFlow id="sf6" sourceRef="task_validatestock" targetRef="gw_stock"/>
+    <sequenceFlow id="sf_stock_yes" name="YES" sourceRef="gw_stock" targetRef="task_invoice"/>
+    <sequenceFlow id="sf_stock_no" name="NO" sourceRef="gw_stock" targetRef="task_nostock_notify"/>
+    <sequenceFlow id="sf_nostock_end" sourceRef="task_nostock_notify" targetRef="end_nostock"/>
+
+    <sequenceFlow id="mf_invoice_to_payment" sourceRef="task_invoice" targetRef="task_processpay"/>
+    <sequenceFlow id="mf_pay_to_gateway" sourceRef="task_paymethod" targetRef="task_processpay"/>
+    <sequenceFlow id="sf7" sourceRef="task_processpay" targetRef="gw_payment"/>
+    <sequenceFlow id="sf_pay_yes" name="YES" sourceRef="gw_payment" targetRef="task_payconfirm"/>
+    <sequenceFlow id="sf_pay_no" name="NO" sourceRef="gw_payment" targetRef="task_payfail_notify"/>
+    <sequenceFlow id="sf_payfail_end" sourceRef="task_payfail_notify" targetRef="end_payfail"/>
+
+    <sequenceFlow id="mf_payment_to_warehouse" sourceRef="task_payconfirm" targetRef="task_pickpack"/>
+    <sequenceFlow id="sf8" sourceRef="task_pickpack" targetRef="task_assigncarrier"/>
+    <sequenceFlow id="sf9" sourceRef="task_assigncarrier" targetRef="task_dispatch"/>
+
+    <sequenceFlow id="mf_dispatch_to_shipping" sourceRef="task_dispatch" targetRef="task_pickup"/>
+    <sequenceFlow id="sf10" sourceRef="task_pickup" targetRef="task_intransit"/>
+    <sequenceFlow id="sf11" sourceRef="task_intransit" targetRef="timer_deadline"/>
+    <sequenceFlow id="sf12" sourceRef="timer_deadline" targetRef="gw_delivered"/>
+    <sequenceFlow id="sf_delivered_yes" name="YES" sourceRef="gw_delivered" targetRef="task_deliveryconfirm"/>
+    <sequenceFlow id="sf_delivered_no" name="NO" sourceRef="gw_delivered" targetRef="msg_delayalert"/>
+    <sequenceFlow id="sf13" sourceRef="msg_delayalert" targetRef="task_delay_notify"/>
+    <sequenceFlow id="mf_delay_to_complaint" sourceRef="task_delay_notify" targetRef="task_complaint"/>
+    <sequenceFlow id="mf_complaint_to_decision" sourceRef="task_complaint" targetRef="gw_customer_decision"/>
+    <sequenceFlow id="sf_decision_cancel" name="CANCEL" sourceRef="gw_customer_decision" targetRef="task_refund"/>
+    <sequenceFlow id="sf_decision_wait" name="WAIT" sourceRef="gw_customer_decision" targetRef="task_reschedule"/>
+    <sequenceFlow id="sf_refund_end" sourceRef="task_refund" targetRef="end_cancelled_delay"/>
+    <sequenceFlow id="sf14" sourceRef="task_reschedule" targetRef="task_deliveryconfirm"/>
+    <sequenceFlow id="mf_confirm_to_review" sourceRef="task_deliveryconfirm" targetRef="task_review"/>
+
+  </process>
+
+  <!-- ======= DIAGRAM INTERCHANGE (positions) ======= -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_before">
+    <bpmndi:BPMNPlane id="BPMNPlane_before" bpmnElement="collab_before">
+
+      <!-- POOL -->
+      <bpmndi:BPMNShape id="shape_pool" bpmnElement="pool_shopEasy" isHorizontal="true">
+        <omgdc:Bounds x="80" y="80" width="3100" height="1000"/>
+      </bpmndi:BPMNShape>
+
+      <!-- LANES -->
+      <bpmndi:BPMNShape id="shape_lane_customer" bpmnElement="lane_customer" isHorizontal="true">
+        <omgdc:Bounds x="110" y="80" width="3070" height="170"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_lane_ordermgmt" bpmnElement="lane_ordermgmt" isHorizontal="true">
+        <omgdc:Bounds x="110" y="250" width="3070" height="170"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_lane_payment" bpmnElement="lane_payment" isHorizontal="true">
+        <omgdc:Bounds x="110" y="420" width="3070" height="170"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_lane_warehouse" bpmnElement="lane_warehouse" isHorizontal="true">
+        <omgdc:Bounds x="110" y="590" width="3070" height="170"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_lane_shipping" bpmnElement="lane_shipping" isHorizontal="true">
+        <omgdc:Bounds x="110" y="760" width="3070" height="320"/>
+      </bpmndi:BPMNShape>
+
+      <!-- CUSTOMER LANE SHAPES -->
+      <bpmndi:BPMNShape id="shape_start_visit" bpmnElement="start_visit">
+        <omgdc:Bounds x="162" y="147" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="140" y="188" width="80" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_browse" bpmnElement="task_browse">
+        <omgdc:Bounds x="250" y="130" width="120" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_addcart" bpmnElement="task_addcart">
+        <omgdc:Bounds x="430" y="130" width="120" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_reviewcart" bpmnElement="task_reviewcart">
+        <omgdc:Bounds x="610" y="130" width="120" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_address" bpmnElement="task_address">
+        <omgdc:Bounds x="790" y="130" width="120" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_paymethod" bpmnElement="task_paymethod">
+        <omgdc:Bounds x="1050" y="130" width="120" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_complaint" bpmnElement="task_complaint">
+        <omgdc:Bounds x="2400" y="130" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_review" bpmnElement="task_review">
+        <omgdc:Bounds x="2820" y="130" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_end_complete" bpmnElement="end_complete">
+        <omgdc:Bounds x="3032" y="147" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="3010" y="188" width="80" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- ORDER MGMT LANE SHAPES -->
+      <bpmndi:BPMNShape id="shape_validatestock" bpmnElement="task_validatestock">
+        <omgdc:Bounds x="790" y="300" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_gw_stock" bpmnElement="gw_stock" isMarkerVisible="true">
+        <omgdc:Bounds x="990" y="310" width="50" height="50"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="970" y="365" width="90" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_nostock_notify" bpmnElement="task_nostock_notify">
+        <omgdc:Bounds x="990" y="260" width="140" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_end_nostock" bpmnElement="end_nostock">
+        <omgdc:Bounds x="1192" y="268" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1168" y="308" width="84" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_invoice" bpmnElement="task_invoice">
+        <omgdc:Bounds x="1100" y="300" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+
+      <!-- PAYMENT LANE SHAPES -->
+      <bpmndi:BPMNShape id="shape_processpay" bpmnElement="task_processpay">
+        <omgdc:Bounds x="1340" y="470" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_gw_payment" bpmnElement="gw_payment" isMarkerVisible="true">
+        <omgdc:Bounds x="1540" y="480" width="50" height="50"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1520" y="535" width="90" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_payfail_notify" bpmnElement="task_payfail_notify">
+        <omgdc:Bounds x="1540" y="430" width="140" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_end_payfail" bpmnElement="end_payfail">
+        <omgdc:Bounds x="1742" y="438" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="1718" y="478" width="84" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_payconfirm" bpmnElement="task_payconfirm">
+        <omgdc:Bounds x="1650" y="470" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+
+      <!-- WAREHOUSE LANE SHAPES -->
+      <bpmndi:BPMNShape id="shape_pickpack" bpmnElement="task_pickpack">
+        <omgdc:Bounds x="1860" y="640" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_assigncarrier" bpmnElement="task_assigncarrier">
+        <omgdc:Bounds x="2060" y="640" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_dispatch" bpmnElement="task_dispatch">
+        <omgdc:Bounds x="2260" y="640" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+
+      <!-- SHIPPING LANE SHAPES -->
+      <bpmndi:BPMNShape id="shape_pickup" bpmnElement="task_pickup">
+        <omgdc:Bounds x="2260" y="830" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_intransit" bpmnElement="task_intransit">
+        <omgdc:Bounds x="2460" y="830" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_timer_deadline" bpmnElement="timer_deadline">
+        <omgdc:Bounds x="2662" y="847" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="2638" y="888" width="84" height="40"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_gw_delivered" bpmnElement="gw_delivered" isMarkerVisible="true">
+        <omgdc:Bounds x="2758" y="840" width="50" height="50"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="2738" y="895" width="90" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_msg_delayalert" bpmnElement="msg_delayalert">
+        <omgdc:Bounds x="2758" y="960" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="2734" y="1001" width="84" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_delay_notify" bpmnElement="task_delay_notify">
+        <omgdc:Bounds x="2560" y="945" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_gw_customer_decision" bpmnElement="gw_customer_decision" isMarkerVisible="true">
+        <omgdc:Bounds x="2375" y="955" width="50" height="50"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="2350" y="1010" width="100" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_refund" bpmnElement="task_refund">
+        <omgdc:Bounds x="2200" y="945" width="120" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_end_cancelled_delay" bpmnElement="end_cancelled_delay">
+        <omgdc:Bounds x="2082" y="962" width="36" height="36"/>
+        <bpmndi:BPMNLabel><omgdc:Bounds x="2055" y="1002" width="90" height="27"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_reschedule" bpmnElement="task_reschedule">
+        <omgdc:Bounds x="2840" y="945" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="shape_deliveryconfirm" bpmnElement="task_deliveryconfirm">
+        <omgdc:Bounds x="2880" y="830" width="140" height="70"/>
+      </bpmndi:BPMNShape>
+
+      <!-- SEQUENCE FLOW EDGES -->
+      <bpmndi:BPMNEdge id="edge_sf1" bpmnElement="sf1"><omgdi:waypoint x="198" y="165"/><omgdi:waypoint x="250" y="165"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf2" bpmnElement="sf2"><omgdi:waypoint x="370" y="165"/><omgdi:waypoint x="430" y="165"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf3" bpmnElement="sf3"><omgdi:waypoint x="550" y="165"/><omgdi:waypoint x="610" y="165"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf4" bpmnElement="sf4"><omgdi:waypoint x="730" y="165"/><omgdi:waypoint x="790" y="165"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf5" bpmnElement="sf5"><omgdi:waypoint x="910" y="165"/><omgdi:waypoint x="1050" y="165"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf_review_end" bpmnElement="sf_review_end"><omgdi:waypoint x="2960" y="165"/><omgdi:waypoint x="3032" y="165"/></bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_mf_addr_om" bpmnElement="mf_address_to_ordermgmt"><omgdi:waypoint x="850" y="200"/><omgdi:waypoint x="850" y="300"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf6" bpmnElement="sf6"><omgdi:waypoint x="930" y="335"/><omgdi:waypoint x="990" y="335"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf_stock_yes" bpmnElement="sf_stock_yes"><omgdi:waypoint x="1040" y="335"/><omgdi:waypoint x="1100" y="335"/><bpmndi:BPMNLabel><omgdc:Bounds x="1055" y="315" width="30" height="14"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf_stock_no" bpmnElement="sf_stock_no"><omgdi:waypoint x="1015" y="310"/><omgdi:waypoint x="1015" y="285"/><omgdi:waypoint x="990" y="285"/><bpmndi:BPMNLabel><omgdc:Bounds x="998" y="290" width="20" height="14"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf_nostock_end" bpmnElement="sf_nostock_end"><omgdi:waypoint x="1130" y="285"/><omgdi:waypoint x="1192" y="285"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_mf_inv_pay" bpmnElement="mf_invoice_to_payment"><omgdi:waypoint x="1170" y="370"/><omgdi:waypoint x="1170" y="505"/><omgdi:waypoint x="1340" y="505"/></bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_mf_pay_gw" bpmnElement="mf_pay_to_gateway"><omgdi:waypoint x="1110" y="200"/><omgdi:waypoint x="1110" y="505"/><omgdi:waypoint x="1340" y="505"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf7" bpmnElement="sf7"><omgdi:waypoint x="1480" y="505"/><omgdi:waypoint x="1540" y="505"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf_pay_yes" bpmnElement="sf_pay_yes"><omgdi:waypoint x="1590" y="505"/><omgdi:waypoint x="1650" y="505"/><bpmndi:BPMNLabel><omgdc:Bounds x="1606" y="487" width="30" height="14"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf_pay_no" bpmnElement="sf_pay_no"><omgdi:waypoint x="1565" y="480"/><omgdi:waypoint x="1565" y="455"/><omgdi:waypoint x="1540" y="455"/><bpmndi:BPMNLabel><omgdc:Bounds x="1548" y="460" width="20" height="14"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf_payfail_end" bpmnElement="sf_payfail_end"><omgdi:waypoint x="1680" y="455"/><omgdi:waypoint x="1742" y="455"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_mf_pay_wh" bpmnElement="mf_payment_to_warehouse"><omgdi:waypoint x="1720" y="540"/><omgdi:waypoint x="1720" y="675"/><omgdi:waypoint x="1860" y="675"/></bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_sf8" bpmnElement="sf8"><omgdi:waypoint x="2000" y="675"/><omgdi:waypoint x="2060" y="675"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf9" bpmnElement="sf9"><omgdi:waypoint x="2200" y="675"/><omgdi:waypoint x="2260" y="675"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_mf_disp_ship" bpmnElement="mf_dispatch_to_shipping"><omgdi:waypoint x="2330" y="710"/><omgdi:waypoint x="2330" y="830"/></bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="edge_sf10" bpmnElement="sf10"><omgdi:waypoint x="2400" y="865"/><omgdi:waypoint x="2460" y="865"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf11" bpmnElement="sf11"><omgdi:waypoint x="2600" y="865"/><omgdi:waypoint x="2662" y="865"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf12" bpmnElement="sf12"><omgdi:waypoint x="2698" y="865"/><omgdi:waypoint x="2758" y="865"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf_del_yes" bpmnElement="sf_delivered_yes"><omgdi:waypoint x="2808" y="865"/><omgdi:waypoint x="2880" y="865"/><bpmndi:BPMNLabel><omgdc:Bounds x="2824" y="847" width="30" height="14"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf_del_no" bpmnElement="sf_delivered_no"><omgdi:waypoint x="2783" y="890"/><omgdi:waypoint x="2783" y="960"/><omgdi:waypoint x="2758" y="960"/><bpmndi:BPMNLabel><omgdc:Bounds x="2790" y="920" width="20" height="14"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf13" bpmnElement="sf13"><omgdi:waypoint x="2758" y="978"/><omgdi:waypoint x="2700" y="978"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_mf_delay_complaint" bpmnElement="mf_delay_to_complaint"><omgdi:waypoint x="2560" y="978"/><omgdi:waypoint x="2470" y="165"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_mf_complaint_dec" bpmnElement="mf_complaint_to_decision"><omgdi:waypoint x="2400" y="200"/><omgdi:waypoint x="2400" y="980"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf_dec_cancel" bpmnElement="sf_decision_cancel"><omgdi:waypoint x="2375" y="980"/><omgdi:waypoint x="2320" y="980"/><bpmndi:BPMNLabel><omgdc:Bounds x="2334" y="962" width="40" height="14"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf_dec_wait" bpmnElement="sf_decision_wait"><omgdi:waypoint x="2425" y="955"/><omgdi:waypoint x="2425" y="910"/><omgdi:waypoint x="2840" y="910"/><omgdi:waypoint x="2840" y="945"/><bpmndi:BPMNLabel><omgdc:Bounds x="2600" y="893" width="30" height="14"/></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf_refund_end" bpmnElement="sf_refund_end"><omgdi:waypoint x="2200" y="980"/><omgdi:waypoint x="2118" y="980"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_sf14" bpmnElement="sf14"><omgdi:waypoint x="2910" y="945"/><omgdi:waypoint x="2910" y="900"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="edge_mf_confirm_review" bpmnElement="mf_confirm_to_review"><omgdi:waypoint x="2950" y="830"/><omgdi:waypoint x="2950" y="165"/><omgdi:waypoint x="2820" y="165"/></bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>
